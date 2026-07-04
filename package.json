@@ -1,0 +1,13 @@
+{
+  "name": "supabase-passbook-debug",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Debug scripts for Supabase Passbook - sign in and test insert",
+  "main": "debug/supabase_debug.js",
+  "scripts": {
+    "debug": "node debug/supabase_debug.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.32.0"
+  }
+}
