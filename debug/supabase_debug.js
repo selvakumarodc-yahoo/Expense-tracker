@@ -26,6 +26,15 @@ async function main(){
     process.exit(1);
   }
 
+  // Ensure the client has the session set so subsequent requests include the access token
+  if(signInData?.session){
+    const { data: setData, error: setError } = await supabase.auth.setSession(signInData.session);
+    console.log('setSession result:', { setData, setError });
+    if(setError){
+      console.error('setSession failed:', setError);
+    }
+  }
+
   const user = signInData?.session?.user || signInData?.user;
   console.log('User object:', user);
   if(!user){
