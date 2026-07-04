@@ -532,10 +532,13 @@
       setSyncStatus('syncing');
       const { data, error } = await supabase.auth.signUp({ email, password });
       if(error) throw error;
-      showAuthError('Account created. Check your inbox for confirmation if required.');
-      if(data.user){
-        currentUser = data.user;
+      if(data.session?.user){
+        currentUser = data.session.user;
         await onLoggedIn();
+      } else {
+        showAuthError('Account created. Check your inbox for confirmation before signing in.');
+        setSyncStatus('synced');
+        showAuthScreen(true);
       }
     } catch(error){
       setSyncStatus('error');
@@ -700,9 +703,17 @@
     if(!supabase) return;
     updateAuthUI();
     const { data, error } = await supabase.auth.getSession();
+    console.log('Supabase session data:', data);
+    console.log('Supabase auth error:', error);
     if(error){ console.error(error); setSyncStatus('error'); return; }
-    if(data?.session?.user){ currentUser = data.session.user; await onLoggedIn(); }
-    else showAuthScreen(true);
+    if(data?.session?.user){
+      currentUser = data.session.user;
+      console.log('Current user loaded:', currentUser);
+      await onLoggedIn();
+    } else {
+      console.log('No active user session found');
+      showAuthScreen(true);
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
