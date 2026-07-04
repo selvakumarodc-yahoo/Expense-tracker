@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Passbook — Supabase Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --paper:#ECEFE9;
+      --paper-alt:#F8F9F5;
+      --line:#D2D9C9;
+      --line-soft:#E2E6DA;
+      --ink:#212B23;
+      --ink-soft:#5B6559;
+      --ink-faint:#8B948685;
+      --brass:#A2762F;
+      --brass-dark:#7C5A25;
+      --brass-light:#D3AE6A;
+      --red:#93362D;
+      --green:#3D7457;
+      --shadow:rgba(33,43,35,0.10);
+      --spine-w:64px;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;}
+    body{
+      background:var(--paper);
+      color:var(--ink);
+      font-family:'Inter',sans-serif;
+      -webkit-font-smoothing:antialiased;
+      min-height:100vh;
+      background-image:repeating-linear-gradient(to bottom, transparent 0px, transparent 27px, var(--line-soft) 27px, var(--line-soft) 28px);
+      background-attachment:fixed;
+    }
+    .auth-screen,
+    .app{ min-height:100vh; }
+    .auth-screen{
+      display:flex; align-items:center; justify-content:center;
+      padding:24px;
+    }
+    .auth-container{
+      width:100%; max-width:420px; padding:36px;
+      background:var(--paper-alt); border-radius:12px;
+      box-shadow:0 16px 48px rgba(0,0,0,0.12);
+    }
+    .auth-container h1{ font-family:'Fraunces',serif; font-size:34px; margin:0 0 10px; }
+    .auth-container .subtitle{ margin:0 0 28px; color:var(--ink-soft); font-size:14px; }
+    .auth-field{ margin-bottom:18px; }
+    .auth-field label{ display:block; font-size:12px; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); }
+    .auth-field input{ width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); font-size:14px; }
+    .auth-btn{ width:100%; border:none; border-radius:8px; padding:12px 16px; background:var(--brass); color:#FBF6EC; font-weight:700; cursor:pointer; font-size:15px; }
+    .auth-btn:disabled{ opacity:0.66; cursor:not-allowed; }
+    .auth-toggle{ margin-top:18px; text-align:center; font-size:13px; color:var(--ink-soft); }
+    .auth-toggle button{ background:none; border:none; color:var(--brass); cursor:pointer; font-weight:700; }
+    .auth-error{ display:none; margin-bottom:18px; padding:12px 14px; border-radius:8px; background:#F8E8E8; color:var(--red); font-size:13px; }
+    .auth-error.show{ display:block; }
+    .auth-info{ margin-top:22px; padding:14px 16px; border-radius:8px; background:#E8F5E9; border-left:4px solid var(--green); color:#2F5930; font-size:13px; }
+    .hidden{ display:none !important; }
+    .spine{ position:fixed; top:0; left:0; bottom:0; width:var(--spine-w); background:linear-gradient(180deg, var(--brass-dark), var(--brass) 45%, var(--brass-dark)); display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:20px 0; z-index:20; box-shadow:3px 0 12px var(--shadow); }
+    .spine .stitch{ display:flex; flex-direction:column; gap:7px; align-items:center; }
+    .spine .stitch span{ width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,0.35); }
+    .spine .spine-title{ writing-mode:vertical-rl; transform:rotate(180deg); font-family:'Fraunces',serif; font-weight:600; letter-spacing:0.12em; color:#F3E9D3; font-size:15px; text-transform:uppercase; }
+    .spine .logout-btn{ background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.28); color:#F3E9D3; padding:8px 12px; border-radius:3px; cursor:pointer; font-size:11px; font-weight:600; text-transform:uppercase; }
+    .spine .logout-btn:hover{ background:rgba(255,255,255,0.28); }
+    .app{ margin-left:var(--spine-w); display:flex; flex-direction:column; }
+    .header{ padding:38px 44px 18px; display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:18px; }
+    .header h1{ font-family:'Fraunces',serif; font-weight:600; font-size:38px; margin:0 0 4px; letter-spacing:-0.01em; }
+    .header .subtitle{ color:var(--ink-soft); font-size:14px; margin:0; }
+    .header-user{ text-align:right; }
+    .header-user .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.14em; color:var(--ink-soft); }
+    .header-user .value{ font-size:14px; color:var(--brass); font-weight:600; }
+    .header-total{ text-align:right; }
+    .header-total .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.14em; color:var(--ink-soft); }
+    .header-total .value{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:30px; color:var(--red); }
+    .sync-status{ position:fixed; top:20px; right:20px; font-size:12px; color:var(--ink-soft); background:var(--paper); padding:8px 12px; border-radius:3px; border:1px solid var(--line); }
+    .sync-status.synced{ color:var(--green); }
+    .sync-status.error{ color:var(--red); }
+    .tabs{ display:flex; gap:4px; padding:0 40px; }
+    .tab{ font-family:'Inter'; font-weight:600; font-size:13.5px; letter-spacing:0.02em; background:var(--line-soft); color:var(--ink-soft); border:none; cursor:pointer; padding:11px 22px 13px; clip-path:polygon(10% 0, 90% 0, 100% 100%, 0% 100%); margin-right:-6px; }
+    .tab.active{ background:var(--paper-alt); color:var(--ink); box-shadow:0 -2px 8px var(--shadow); }
+    .tab:hover:not(.active){ background:#DFE5D4; }
+    .panel{ background:var(--paper-alt); margin:0 40px 40px; border-radius:2px; box-shadow:0 6px 20px var(--shadow); padding:34px; flex:1; }
+    .stat-card{ border:1px solid var(--line); background:var(--paper); padding:18px 20px; border-radius:2px; border-left:3px solid var(--brass); }
+    .stat-card .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-soft); margin-bottom:6px; }
+    .stat-card .value{ font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; }
+    .section-title{ font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin:0 0 16px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+    .cat-row{ display:flex; align-items:center; gap:14px; margin-bottom:12px; cursor:pointer; }
+    .cat-name{ width:150px; font-size:13.5px; font-weight:500; flex-shrink:0; }
+    .cat-track{ flex:1; height:10px; background:var(--line-soft); border-radius:2px; overflow:hidden; }
+    .cat-fill{ height:100%; border-radius:2px; }
+    .cat-amt{ font-family:'IBM Plex Mono',monospace; font-size:13px; width:130px; text-align:right; flex-shrink:0; }
+    .cat-count{ font-size:11.5px; color:var(--ink-soft); width:56px; text-align:right; flex-shrink:0; }
+    table{ width:100%; border-collapse:collapse; }
+    thead th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); border-bottom:2px solid var(--brass); padding:8px 10px; font-weight:600; }
+    tbody tr{ border-bottom:1px solid var(--line-soft); }
+    tbody tr:hover{ background:rgba(162,118,47,0.06); }
+    tbody td{ padding:11px 10px; font-size:14px; vertical-align:middle; }
+    td.amt{ font-family:'IBM Plex Mono',monospace; text-align:right; color:var(--red); font-weight:500; white-space:nowrap; }
+    td.date-col{ color:var(--ink-soft); font-size:13px; white-space:nowrap; }
+    .tag{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; padding:3px 9px 3px 7px; border-radius:20px; background:var(--paper); }
+    .tag .dot{ width:7px; height:7px; border-radius:50%; }
+    .row-actions{ display:flex; gap:6px; justify-content:flex-end; }
+    .icon-btn{ border:1px solid var(--line); background:var(--paper-alt); cursor:pointer; border-radius:3px; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; color:var(--ink-soft); font-size:13px; line-height:1; }
+    .icon-btn:hover{ border-color:var(--brass); color:var(--brass-dark); }
+    .icon-btn.danger:hover{ border-color:var(--red); color:var(--red); }
+    .toolbar{ display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .toolbar-left{ display:flex; gap:10px; flex-wrap:wrap; }
+    input[type=text], input[type=search], select, input[type=date], input[type=number]{ font-family:'Inter'; font-size:13.5px; padding:9px 12px; border:1px solid var(--line); border-radius:3px; background:var(--paper-alt); color:var(--ink); }
+    input:focus, select:focus{ outline:2px solid var(--brass-light); outline-offset:1px; border-color:var(--brass); }
+    .btn{ font-family:'Inter'; font-weight:600; font-size:13.5px; padding:10px 18px; border-radius:3px; border:1px solid var(--brass); background:var(--brass); color:#FBF6EC; cursor:pointer; }
+    .btn:hover{ background:var(--brass-dark); border-color:var(--brass-dark); }
+    .btn.ghost{ background:transparent; color:var(--brass-dark); }
+    .btn.ghost:hover{ background:rgba(162,118,47,0.1); }
+    .btn.small{ padding:6px 12px; font-size:12.5px; }
+    .form-grid{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr auto; gap:14px; align-items:end; }
+    .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin-bottom:6px; }
+    .field input, .field select{ width:100%; }
+    .new-cat-row{ margin-top:14px; display:flex; gap:10px; align-items:center; }
+    .new-cat-row input{ flex:1; max-width:260px; }
+    .empty-state{ text-align:center; padding:50px 20px; color:var(--ink-soft); }
+    .empty-state .stamp{ font-family:'Fraunces',serif; font-style:italic; font-size:20px; color:var(--ink-faint); margin-bottom:8px; }
+    .footer-note{ margin:0 40px 40px; padding:16px 20px; border-left:3px solid var(--brass); background:var(--paper); font-size:12.5px; color:var(--ink-soft); border-radius:2px; }
+    .footer-note b{ color:var(--ink); }
+    .toast{ position:fixed; bottom:24px; right:24px; background:var(--ink); color:var(--paper-alt); padding:12px 20px; border-radius:4px; font-size:13.5px; box-shadow:0 6px 20px rgba(0,0,0,0.25); opacity:0; transform:translateY(10px); transition:all .25s ease; z-index:50; }
+    .toast.show{ opacity:1; transform:translateY(0); }
+    @media (max-width:720px){ .header{ padding:28px 20px 14px; } .tabs{ padding:0 16px; overflow-x:auto; } .panel{ margin:0 16px 24px; padding:20px; } .footer-note{ margin:0 16px 24px; } .form-grid{ grid-template-columns:1fr 1fr; } .cat-name{ width:90px; font-size:12px; } }
+    :focus-visible{ outline:2px solid var(--brass-dark); outline-offset:2px; }
+  </style>
+</head>
+<body>
+
+<div id="authScreen" class="auth-screen">
+  <div class="auth-container">
+    <h1>Passbook</h1>
+    <p class="subtitle">Cloud ledger with Supabase authentication</p>
+    <div id="authError" class="auth-error"></div>
+    <form id="authForm" class="auth-form">
+      <div class="auth-field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" required>
+      </div>
+      <div class="auth-field">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" required minlength="8">
+      </div>
+      <button type="submit" class="auth-btn" id="authSubmitBtn">Sign in</button>
+      <div class="auth-toggle">Don't have an account? <button type="button" id="toggleAuthBtn">Sign up</button></div>
+    </form>
+    <div class="auth-info" id="authInfo">If you are new, click Sign up and create an account. If you already have one, sign in.</div>
+  </div>
+</div>
+
+<div id="appContainer" class="hidden">
+  <div class="spine">
+    <div class="stitch"><span></span><span></span><span></span><span></span><span></span></div>
+    <div class="spine-title">Expense Passbook</div>
+    <button class="logout-btn" id="logoutBtn">↪ Logout</button>
+    <div class="stitch"><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
+
+  <div class="app">
+    <div class="header">
+      <div>
+        <h1>Passbook</h1>
+        <p class="subtitle">Household ledger synced to Supabase</p>
+      </div>
+      <div class="header-user">
+        <div class="label">Signed in as</div>
+        <div class="value" id="userEmail">—</div>
+      </div>
+      <div class="header-total">
+        <div class="label">Total recorded</div>
+        <div class="value" id="headerTotal">₹0.00</div>
+      </div>
+    </div>
+
+    <div class="sync-status" id="syncStatus">Initializing...</div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard">Dashboard</button>
+      <button class="tab" data-tab="entries">All Entries</button>
+      <button class="tab" data-tab="add">Add Entry</button>
+      <button class="tab" data-tab="categories">By Category</button>
+    </div>
+
+    <div class="panel" id="panel-dashboard">
+      <div class="stats" id="statCards"></div>
+      <div class="section-title">Spending by category</div>
+      <div id="dashCategoryBars"></div>
+      <div class="section-title" style="margin-top:28px;">Recent entries</div>
+      <table>
+        <thead><tr><th>Description</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th></tr></thead>
+        <tbody id="recentRows"></tbody>
+      </table>
+    </div>
+
+    <div class="panel hidden" id="panel-entries">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input type="search" id="searchBox" placeholder="Search description…" style="width:220px;">
+          <select id="filterCategory"><option value="">All categories</option></select>
+          <select id="sortBy">
+            <option value="date-desc">Newest first</option>
+            <option value="date-asc">Oldest first</option>
+            <option value="amount-desc">Amount: high to low</option>
+            <option value="amount-asc">Amount: low to high</option>
+          </select>
+        </div>
+        <div class="toolbar-left">
+          <button class="btn ghost small" id="exportJsonBtn">Export JSON</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Description</th><th>Category</th><th>Date</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+        <tbody id="entryRows"></tbody>
+      </table>
+      <div id="entriesEmpty" class="empty-state hidden"><div class="stamp">— no matching entries —</div><div>Try clearing filters, or add a new entry.</div></div>
+    </div>
+
+    <div class="panel hidden" id="panel-add">
+      <div class="section-title">Add an entry to the ledger</div>
+      <form id="addForm">
+        <div class="form-grid">
+          <div class="field"><label for="descInput">Description</label><input type="text" id="descInput" required placeholder="e.g. Big basket groceries"></div>
+          <div class="field"><label for="amountInput">Amount (₹)</label><input type="number" id="amountInput" required min="0" step="0.01" placeholder="0.00"></div>
+          <div class="field"><label for="categoryInput">Category</label><select id="categoryInput"></select></div>
+          <div class="field"><label for="dateInput">Date</label><input type="date" id="dateInput" required></div>
+          <div class="field"><button type="submit" class="btn">Add to ledger</button></div>
+        </div>
+        <div class="new-cat-row"><input type="text" id="newCategoryInput" placeholder="Or create a new category…"><button type="button" class="btn ghost small" id="addCategoryBtn">Add category</button></div>
+      </form>
+    </div>
+
+    <div class="panel hidden" id="panel-categories">
+      <div class="section-title">Every category, in full</div>
+      <div id="fullCategoryBars"></div>
+    </div>
+
+    <div class="footer-note"><b>Cloud storage:</b> Your expenses are stored in Supabase and are visible only to your signed-in account. This app is designed for Netlify static hosting.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  const SUPABASE_URL = 'https://xeuumrdqwehbgkomzzxz.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_lAnnNZtFcFNlKyBby7K1oQ_heDlFdCf';
+
+  const DEFAULT_CATEGORIES = ['Bills','Groceries','Healthcare','Education','Child Care','Transport','Entertainment','Other'];
+
+  const authScreen = document.getElementById('authScreen');
+  const appContainer = document.getElementById('appContainer');
+  const authError = document.getElementById('authError');
+  const authForm = document.getElementById('authForm');
+  const toggleAuthBtn = document.getElementById('toggleAuthBtn');
+  const authSubmitBtn = document.getElementById('authSubmitBtn');
+  const authInfo = document.getElementById('authInfo');
+  const userEmailEl = document.getElementById('userEmail');
+  const syncStatusEl = document.getElementById('syncStatus');
+  const headerTotal = document.getElementById('headerTotal');
+  const tabs = document.querySelectorAll('.tab');
+  const panels = {
+    dashboard: document.getElementById('panel-dashboard'),
+    entries: document.getElementById('panel-entries'),
+    add: document.getElementById('panel-add'),
+    categories: document.getElementById('panel-categories')
+  };
+  const searchBox = document.getElementById('searchBox');
+  const filterCategory = document.getElementById('filterCategory');
+  const sortBy = document.getElementById('sortBy');
+  const entryRows = document.getElementById('entryRows');
+  const entriesEmpty = document.getElementById('entriesEmpty');
+  const exportJsonBtn = document.getElementById('exportJsonBtn');
+  const addForm = document.getElementById('addForm');
+  const descInput = document.getElementById('descInput');
+  const amountInput = document.getElementById('amountInput');
+  const categoryInput = document.getElementById('categoryInput');
+  const dateInput = document.getElementById('dateInput');
+  const newCategoryInput = document.getElementById('newCategoryInput');
+  const addCategoryBtn = document.getElementById('addCategoryBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  let supabase;
+  let currentUser = null;
+  let expenses = [];
+  let categories = [...DEFAULT_CATEGORIES];
+  let authMode = 'signin';
+
+  function createSupabaseClient(){
+    if (SUPABASE_URL.includes('YOUR_SUPABASE_URL') || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE_ANON_KEY')) {
+      showAuthError('Replace SUPABASE_URL and SUPABASE_ANON_KEY in index.html before use.');
+      return null;
+    }
+    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  function setSyncStatus(status){
+    syncStatusEl.classList.remove('synced','error');
+    if(status === 'syncing'){
+      syncStatusEl.textContent = '💾 Syncing...';
+    } else if(status === 'synced'){
+      syncStatusEl.textContent = '✓ Synced';
+      syncStatusEl.classList.add('synced');
+      setTimeout(() => syncStatusEl.textContent = '💾 Synced to cloud', 1800);
+    } else if(status === 'error'){
+      syncStatusEl.textContent = '✕ Sync failed';
+      syncStatusEl.classList.add('error');
+    }
+  }
+
+  function showAuthError(message){
+    authError.textContent = message;
+    authError.classList.toggle('show', Boolean(message));
+  }
+
+  function updateAuthUI(){
+    if(authMode === 'signin'){
+      toggleAuthBtn.textContent = 'Sign up';
+      authSubmitBtn.textContent = 'Sign in';
+      authInfo.textContent = 'Enter your credentials to sign in to your Supabase account.';
+    } else {
+      toggleAuthBtn.textContent = 'Sign in';
+      authSubmitBtn.textContent = 'Create account';
+      authInfo.textContent = 'Enter a new email and password to create a Supabase account.';
+    }
+  }
+
+  function escapeHtml(value){
+    return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch] );
+  }
+
+  function formatCurrency(amount){
+    return '₹' + Number(amount).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function formatDateString(dateString){
+    try{
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    } catch {
+      return dateString;
+    }
+  }
+
+  function colorForCategory(category){
+    const palette = ['#A2762F','#3D7457','#93362D','#43608F','#6E5199','#B08A46','#37808F','#7A5643'];
+    let hash = 0;
+    for(const char of category){ hash = (hash * 31 + char.charCodeAt(0)) >>> 0; }
+    return palette[hash % palette.length];
+  }
+
+  function categoryTag(category){
+    return `<span class="tag"><span class="dot" style="background:${colorForCategory(category)}"></span>${escapeHtml(category)}</span>`;
+  }
+
+  function populateCategorySelects(){
+    const list = categories.slice().sort();
+    filterCategory.innerHTML = '<option value="">All categories</option>' + list.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+    categoryInput.innerHTML = list.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+  }
+
+  function renderDashboard(){
+    const total = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+    headerTotal.textContent = formatCurrency(total);
+    const count = expenses.length;
+    let avgPerDay = 0;
+    if(count){
+      const dates = expenses.map(e => e.date).sort();
+      const first = new Date(dates[0]);
+      const last = new Date(dates[dates.length - 1]);
+      const days = Math.max(1, Math.round((last - first) / 86400000) + 1);
+      avgPerDay = total / days;
+    }
+    document.getElementById('statCards').innerHTML = `
+      <div class="stat-card"><div class="label">Total Entries</div><div class="value">${count}</div></div>
+      <div class="stat-card"><div class="label">Total Amount</div><div class="value">${formatCurrency(total)}</div></div>
+      <div class="stat-card"><div class="label">Average / Day</div><div class="value">${formatCurrency(avgPerDay)}</div></div>
+    `;
+    renderCategoryBars('dashCategoryBars', true);
+    const recent = expenses.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
+    document.getElementById('recentRows').innerHTML = recent.length ? recent.map(exp => `
+      <tr>
+        <td>${escapeHtml(exp.description)}</td>
+        <td>${categoryTag(exp.category)}</td>
+        <td class="date-col">${formatDateString(exp.date)}</td>
+        <td class="amt">${formatCurrency(exp.amount)}</td>
+      </tr>
+    `).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);padding:24px;">No entries found yet.</td></tr>`;
+  }
+
+  function buildCategoryTotals(){
+    const map = {};
+    expenses.forEach(exp => {
+      if(!map[exp.category]) map[exp.category] = { total: 0, count: 0 };
+      map[exp.category].total += Number(exp.amount);
+      map[exp.category].count += 1;
+    });
+    return Object.entries(map).sort((a,b) => b[1].total - a[1].total);
+  }
+
+  function renderCategoryBars(targetId, topOnly){
+    const totals = buildCategoryTotals();
+    const rows = topOnly ? totals.slice(0,5) : totals;
+    const max = totals.length ? totals[0][1].total : 1;
+    const container = document.getElementById(targetId);
+    if(!rows.length){
+      container.innerHTML = `<div class="empty-state"><div class="stamp">— no category data —</div>Add an expense to see your categories.</div>`;
+      return;
+    }
+    container.innerHTML = rows.map(([category,data]) => `
+      <div class="cat-row" data-cat="${escapeHtml(category)}">
+        <div class="cat-name">${escapeHtml(category)}</div>
+        <div class="cat-track"><div class="cat-fill" style="width:${((data.total/max)*100).toFixed(1)}%; background:${colorForCategory(category)}"></div></div>
+        <div class="cat-amt">${formatCurrency(data.total)}</div>
+        <div class="cat-count">${data.count} item${data.count===1?'':'s'}</div>
+      </div>
+    `).join('');
+    container.querySelectorAll('.cat-row').forEach(row => row.addEventListener('click', () => {
+      selectTab('entries');
+      filterCategory.value = row.dataset.cat;
+      renderEntries();
+    }));
+  }
+
+  function renderEntries(){
+    const query = searchBox.value.trim().toLowerCase();
+    const category = filterCategory.value;
+    const sort = sortBy.value;
+    let rows = expenses.slice();
+    if(query) rows = rows.filter(exp => exp.description.toLowerCase().includes(query));
+    if(category) rows = rows.filter(exp => exp.category === category);
+    rows.sort((a,b) => {
+      if(sort === 'date-desc') return b.date.localeCompare(a.date);
+      if(sort === 'date-asc') return a.date.localeCompare(b.date);
+      if(sort === 'amount-desc') return b.amount - a.amount;
+      if(sort === 'amount-asc') return a.amount - b.amount;
+      return 0;
+    });
+    if(!rows.length){
+      entryRows.innerHTML = '';
+      entriesEmpty.classList.remove('hidden');
+      return;
+    }
+    entriesEmpty.classList.add('hidden');
+    entryRows.innerHTML = rows.map(exp => `
+      <tr data-id="${exp.id}">
+        <td>${escapeHtml(exp.description)}</td>
+        <td>${categoryTag(exp.category)}</td>
+        <td class="date-col">${formatDateString(exp.date)}</td>
+        <td class="amt">${formatCurrency(exp.amount)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" data-action="edit" title="Edit">✎</button>
+            <button class="icon-btn danger" data-action="delete" title="Delete">✕</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+    entryRows.querySelectorAll('button[data-action="delete"]').forEach(btn => btn.addEventListener('click', async event => {
+      const id = event.target.closest('tr').dataset.id;
+      if(!confirm('Delete this expense?')) return;
+      await deleteExpense(id);
+    }));
+    entryRows.querySelectorAll('button[data-action="edit"]').forEach(btn => btn.addEventListener('click', event => {
+      const id = event.target.closest('tr').dataset.id;
+      openEditRow(id);
+    }));
+  }
+
+  function openEditRow(id){
+    const expense = expenses.find(item => item.id === id);
+    if(!expense) return;
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    row.innerHTML = `
+      <td><input type="text" id="edit-desc" value="${escapeHtml(expense.description)}" style="width:100%;"></td>
+      <td><select id="edit-cat">${categories.map(cat => `<option value="${escapeHtml(cat)}" ${cat===expense.category?'selected':''}>${escapeHtml(cat)}</option>`).join('')}</select></td>
+      <td><input type="date" id="edit-date" value="${expense.date}"></td>
+      <td><input type="number" id="edit-amount" step="0.01" value="${expense.amount}" style="width:100px;text-align:right;"></td>
+      <td><div class="row-actions"><button class="icon-btn" data-action="save" title="Save">✓</button><button class="icon-btn" data-action="cancel" title="Cancel">✕</button></div></td>
+    `;
+    row.querySelector('[data-action="save"]').addEventListener('click', async () => {
+      const updated = {
+        description: document.getElementById('edit-desc').value.trim() || expense.description,
+        category: document.getElementById('edit-cat').value,
+        date: document.getElementById('edit-date').value || expense.date,
+        amount: parseFloat(document.getElementById('edit-amount').value) || expense.amount
+      };
+      await updateExpense(id, updated);
+    });
+    row.querySelector('[data-action="cancel"]').addEventListener('click', renderEntries);
+  }
+
+  function selectTab(name){
+    tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.tab === name));
+    Object.entries(panels).forEach(([key, panel]) => panel.classList.toggle('hidden', key !== name));
+    if(name === 'entries') renderEntries();
+    if(name === 'categories') renderCategoryBars('fullCategoryBars', false);
+    if(name === 'dashboard') renderDashboard();
+  }
+
+  async function signIn(email, password){
+    try{
+      setSyncStatus('syncing');
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+      if(data.session){
+        currentUser = data.user;
+        await onLoggedIn();
+      } else {
+        showAuthError('Check your email for confirmation before signing in.');
+      }
+    } catch(error){
+      setSyncStatus('error');
+      showAuthError(error.message || 'Sign in failed');
+    }
+  }
+
+  async function signUp(email, password){
+    try{
+      setSyncStatus('syncing');
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if(error) throw error;
+      showAuthError('Account created. Check your inbox for confirmation if required.');
+      if(data.user){
+        currentUser = data.user;
+        await onLoggedIn();
+      }
+    } catch(error){
+      setSyncStatus('error');
+      showAuthError(error.message || 'Sign up failed');
+    }
+  }
+
+  async function signOut(){
+    await supabase.auth.signOut();
+    currentUser = null;
+    expenses = [];
+    categories = [...DEFAULT_CATEGORIES];
+    userEmailEl.textContent = '—';
+    authForm.reset();
+    showAuthScreen(true);
+    setSyncStatus('Initializing...');
+  }
+
+  async function fetchExpenses(){
+    try{
+      setSyncStatus('syncing');
+      const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+      if(error) throw error;
+      expenses = data.map(item => ({ ...item, amount: Number(item.amount) }));
+      const categoriesFromExpenses = Array.from(new Set(expenses.map(exp => exp.category).filter(Boolean)));
+      categories = [...new Set([...DEFAULT_CATEGORIES, ...categoriesFromExpenses])];
+      populateCategorySelects();
+      selectTab('dashboard');
+      setSyncStatus('synced');
+    } catch(error){
+      setSyncStatus('error');
+      toast('Unable to load expenses');
+      console.error(error);
+    }
+  }
+
+  async function createExpense(expense){
+    try{
+      setSyncStatus('syncing');
+      const { error } = await supabase.from('expenses').insert([{ ...expense, user_id: currentUser.id }]);
+      if(error) throw error;
+      await fetchExpenses();
+      toast('Added to ledger');
+    } catch(error){
+      setSyncStatus('error');
+      toast('Create failed');
+      console.error(error);
+    }
+  }
+
+  async function deleteExpense(id){
+    try{
+      setSyncStatus('syncing');
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
+      if(error) throw error;
+      await fetchExpenses();
+      toast('Entry removed');
+    } catch(error){
+      setSyncStatus('error');
+      toast('Delete failed');
+      console.error(error);
+    }
+  }
+
+  async function updateExpense(id, values){
+    try{
+      setSyncStatus('syncing');
+      const { error } = await supabase.from('expenses').update(values).eq('id', id);
+      if(error) throw error;
+      await fetchExpenses();
+      toast('Entry updated');
+    } catch(error){
+      setSyncStatus('error');
+      toast('Update failed');
+      console.error(error);
+    }
+  }
+
+  async function onLoggedIn(){
+    if(!currentUser) return;
+    userEmailEl.textContent = currentUser.email;
+    authForm.reset();
+    showAuthScreen(false);
+    await fetchExpenses();
+  }
+
+  function showAuthScreen(show){
+    authScreen.classList.toggle('hidden', !show);
+    appContainer.classList.toggle('hidden', show);
+  }
+
+  function toast(message){
+    const toastEl = document.getElementById('toast');
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._timer);
+    toastEl._timer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  authForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if(authMode === 'signin') await signIn(email, password);
+    else await signUp(email, password);
+  });
+
+  toggleAuthBtn.addEventListener('click', () => {
+    authMode = authMode === 'signin' ? 'signup' : 'signin';
+    updateAuthUI();
+    showAuthError('');
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    if(confirm('Sign out from Passbook?')) await signOut();
+  });
+
+  tabs.forEach(tab => tab.addEventListener('click', () => selectTab(tab.dataset.tab)));
+  searchBox.addEventListener('input', renderEntries);
+  filterCategory.addEventListener('change', renderEntries);
+  sortBy.addEventListener('change', renderEntries);
+  exportJsonBtn.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify({ expenses, categories, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `passbook-${currentUser?.email || 'export'}-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Exported JSON');
+  });
+
+  addForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    const description = descInput.value.trim();
+    const amount = parseFloat(amountInput.value);
+    const category = categoryInput.value;
+    const date = dateInput.value;
+    if(!description || isNaN(amount) || !category || !date){ toast('Fill every field'); return; }
+    if(!categories.includes(category)){ categories.push(category); populateCategorySelects(); }
+    await createExpense({ description, amount, category, date });
+    addForm.reset();
+    dateInput.valueAsDate = new Date();
+  });
+
+  addCategoryBtn.addEventListener('click', () => {
+    const name = newCategoryInput.value.trim();
+    if(!name) return;
+    if(!categories.includes(name)){
+      categories.push(name);
+      populateCategorySelects();
+      categoryInput.value = name;
+      toast('Category added');
+    }
+    newCategoryInput.value = '';
+  });
+
+  async function initialize(){
+    supabase = createSupabaseClient();
+    if(!supabase) return;
+    updateAuthUI();
+    const { data, error } = await supabase.auth.getSession();
+    if(error){ console.error(error); setSyncStatus('error'); return; }
+    if(data?.session?.user){ currentUser = data.session.user; await onLoggedIn(); }
+    else showAuthScreen(true);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    dateInput.valueAsDate = new Date();
+    initialize();
+  });
+</script>
+</body>
+</html>
